@@ -9,14 +9,20 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @Composable
 fun FeedScreen(
     onStockClick: (String) -> Unit,
+    viewModel: FeedViewModel = hiltViewModel(),
     modifier: Modifier = Modifier
 ) {
+
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     Scaffold() { paddingValues ->
 
         LazyColumn(
@@ -30,12 +36,12 @@ fun FeedScreen(
             )
         ) {
             items(
-                items = listOf(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
-            ) { index ->
+                items = uiState.stocks
+            ) { stocks ->
                 Text(
-                    text = "Hello items $index",
+                    text = stocks.symbol,
                     modifier = modifier.clickable {
-                        onStockClick.invoke("$index")
+                        onStockClick.invoke("$stocks")
                     }
                 )
             }
