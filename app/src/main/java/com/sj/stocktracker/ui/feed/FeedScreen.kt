@@ -2,17 +2,22 @@
 
 package com.sj.stocktracker.ui.feed
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -25,18 +30,25 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.sj.stocktracker.domain.model.ConnectionStatus
 import com.sj.stocktracker.domain.model.FeedUiState
 import com.sj.stocktracker.domain.model.PriceChange
 import com.sj.stocktracker.domain.model.Stock
+import kotlinx.coroutines.delay
 
 @Composable
 fun FeedScreen(
@@ -47,7 +59,7 @@ fun FeedScreen(
 
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     FeedContent(
-        uiState, onStockClick, modifier
+        uiState, onStockClick,    viewModel::toggleSimulation,modifier
     )
 }
 
@@ -55,6 +67,7 @@ fun FeedScreen(
 fun FeedContent(
     uiState: FeedUiState,
     onStockClick: (String) -> Unit,
+    onToggle: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Scaffold(
@@ -62,6 +75,8 @@ fun FeedContent(
             TopAppBar(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
+                        ConnectionIndicator(status = uiState.connectionStatus, modifier)
+                        Spacer(modifier = modifier.width(12.dp))
                         Text(
                             text = "Price Tracker",
                             style = MaterialTheme.typography.titleLarge,
@@ -71,7 +86,7 @@ fun FeedContent(
                 },
                 actions = {
                     Button(
-                        onClick = {},
+                        onClick = onToggle,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = if (uiState.isRunning) {
                                 MaterialTheme.colorScheme.error
@@ -91,7 +106,7 @@ fun FeedContent(
     ) { paddingValues ->
 
         LazyColumn(
-            modifier = Modifier
+            modifier = modifier
                 .fillMaxSize()
                 .padding(paddingValues),
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -105,7 +120,8 @@ fun FeedContent(
             ) { stock ->
                 StockRow(
                     stock = stock,
-                    onClick = { onStockClick(stock.symbol) }
+                    onClick = { onStockClick(stock.symbol) },
+                    modifier
                 )
             }
         }
@@ -114,6 +130,29 @@ fun FeedContent(
 
 @Composable
 fun StockRow(stock: Stock, onClick: () -> Unit, modifier: Modifier = Modifier) {
+
+    var isFlashing by remember { mutableStateOf(false) }
+
+    LaunchedEffect(stock.price) {
+        if (stock.change != PriceChange.NONE) {
+            isFlashing = true
+            delay(1000)
+            isFlashing = false
+        }
+    }
+
+    val flashColor = when (stock.change) {
+        PriceChange.UP -> Color(0xFF00C853)
+        PriceChange.DOWN -> Color(0xFFFF1744)
+        PriceChange.NONE -> Color.Transparent
+    }
+
+    val animatedColor by animateColorAsState(
+        targetValue = if (isFlashing) flashColor else Color.Transparent,
+        animationSpec = tween(durationMillis = 500),
+        label = "flashAnimation"
+    )
+
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -141,9 +180,7 @@ fun StockRow(stock: Stock, onClick: () -> Unit, modifier: Modifier = Modifier) {
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .background(
-                        color = if (stock.change == PriceChange.UP) Color(0xFF00C853) else Color(
-                            0xFFFF1744
-                        ),
+                        color = animatedColor,
                         shape = RoundedCornerShape(16.dp)
                     )
                     .padding(horizontal = 12.dp, vertical = 6.dp)
@@ -156,7 +193,7 @@ fun StockRow(stock: Stock, onClick: () -> Unit, modifier: Modifier = Modifier) {
                         color = MaterialTheme.colorScheme.onSurface,
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    PriceChangeIndicator(change = stock.change)
+                    PriceChangeIndicator(change = stock.change, modifier)
                 } ?: Text(
                     text = "—",
                     style = MaterialTheme.typography.bodyLarge,
@@ -186,6 +223,24 @@ private fun PriceChangeIndicator(
     )
 }
 
+@Composable
+private fun ConnectionIndicator(
+    status: ConnectionStatus,
+    modifier: Modifier = Modifier
+) {
+    val color = when (status) {
+        ConnectionStatus.CONNECTED -> Color(0xFF00C853)
+        ConnectionStatus.CONNECTING -> Color(0xFFFFC107)
+        ConnectionStatus.DISCONNECTED -> Color(0xFFFF1744)
+    }
+    Box(
+        modifier = modifier
+            .size(12.dp)
+            .clip(CircleShape)
+            .background(color)
+    )
+}
+
 
 @Preview
 @Composable
@@ -201,6 +256,7 @@ fun FeedContentPreview() {
 
     FeedContent(
         uiState = previewUiState,
-        onStockClick = {}
+        onStockClick = {},
+        onToggle = {}
     )
 }

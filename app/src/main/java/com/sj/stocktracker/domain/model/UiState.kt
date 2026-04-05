@@ -13,3 +13,9 @@ enum class ConnectionStatus {
     DISCONNECTED,
     CONNECTING
 }
+
+data class DetailsUiState(
+    val stock: Stock? = null,
+    val connectionStatus: ConnectionStatus = ConnectionStatus.DISCONNECTED,
+    val description: String = ""
+)

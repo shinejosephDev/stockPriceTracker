@@ -1,14 +1,18 @@
 package com.sj.stocktracker.data.network
 
 import android.util.Log
+import com.sj.stocktracker.core.di.ApplicationScope
 import com.sj.stocktracker.domain.model.ConnectionStatus
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
@@ -19,7 +23,9 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class WebSocketManager @Inject constructor() {
+class WebSocketManager @Inject constructor(
+    @ApplicationScope private val reconnectScope: CoroutineScope
+) {
     companion object {
         private const val TAG = "WebSocketManager"
         private const val WS_URL = "wss://ws.postman-echo.com/raw"
@@ -78,6 +84,7 @@ class WebSocketManager @Inject constructor() {
         if (_connectionStatus.value == ConnectionStatus.CONNECTED ||
             _connectionStatus.value == ConnectionStatus.CONNECTING
         ) return
+        isUserDisconnected = false
 
         _connectionStatus.value = ConnectionStatus.CONNECTING
         val request = Request.Builder().url(WS_URL).build()
@@ -85,17 +92,33 @@ class WebSocketManager @Inject constructor() {
     }
 
     fun disconnect() {
+        isUserDisconnected = true
+
         retryCount = 0
         webSocket?.close(1000, "User requested disconnect")
         webSocket = null
-        _connectionStatus.value = ConnectionStatus.DISCONNECTED
     }
 
     fun sendMessage(message: String): Boolean {
         return webSocket?.send(message) ?: false
     }
 
+    private var isUserDisconnected =
+        false
+
     private fun attemptReconnect() {
-        //todo
+        if (isUserDisconnected) return
+        if (retryCount >= MAX_RETRY_ATTEMPTS) {
+            Log.w(TAG, "Max retry attempts reached")
+            return
+        }
+        retryCount++
+        val delay = RECONNECT_DELAY_MS * retryCount
+        Log.d(TAG, "Reconnecting in ${delay}ms (attempt $retryCount)")
+
+        reconnectScope.launch {
+            delay(delay)
+            connect()
+        }
     }
 }

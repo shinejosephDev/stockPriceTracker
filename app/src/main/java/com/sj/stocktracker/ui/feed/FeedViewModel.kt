@@ -32,11 +32,11 @@ class FeedViewModel @Inject constructor(
         initialValue = FeedUiState()
     )
 
-    init {
-        startSimulaton()
-    }
-
-    fun startSimulaton() {
-        repository.startSimulation()
+    fun toggleSimulation() {
+        if (uiState.value.isRunning) {
+            repository.stopSimulation()
+        } else {
+            repository.startSimulation()
+        }
     }
 }
