@@ -1,19 +1,42 @@
+@file:OptIn(ExperimentalMaterial3Api::class)
+
 package com.sj.stocktracker.ui.feed
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.sj.stocktracker.domain.model.FeedUiState
+import com.sj.stocktracker.domain.model.PriceChange
+import com.sj.stocktracker.domain.model.Stock
 
 @Composable
 fun FeedScreen(
@@ -23,7 +46,49 @@ fun FeedScreen(
 ) {
 
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    Scaffold() { paddingValues ->
+    FeedContent(
+        uiState, onStockClick, modifier
+    )
+}
+
+@Composable
+fun FeedContent(
+    uiState: FeedUiState,
+    onStockClick: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "Price Tracker",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                },
+                actions = {
+                    Button(
+                        onClick = {},
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (uiState.isRunning) {
+                                MaterialTheme.colorScheme.error
+                            } else {
+                                MaterialTheme.colorScheme.primary
+                            }
+                        )
+                    ) {
+                        Text(if (uiState.isRunning) "Stop" else "Start")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
+            )
+        }
+    ) { paddingValues ->
 
         LazyColumn(
             modifier = Modifier
@@ -37,14 +102,105 @@ fun FeedScreen(
         ) {
             items(
                 items = uiState.stocks
-            ) { stocks ->
-                Text(
-                    text = stocks.symbol,
-                    modifier = modifier.clickable {
-                        onStockClick.invoke("$stocks")
-                    }
+            ) { stock ->
+                StockRow(
+                    stock = stock,
+                    onClick = { onStockClick(stock.symbol) }
                 )
             }
         }
     }
+}
+
+@Composable
+fun StockRow(stock: Stock, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = stock.symbol,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .background(
+                        color = if (stock.change == PriceChange.UP) Color(0xFF00C853) else Color(
+                            0xFFFF1744
+                        ),
+                        shape = RoundedCornerShape(16.dp)
+                    )
+                    .padding(horizontal = 12.dp, vertical = 6.dp)
+            ) {
+                stock.price?.let { price ->
+                    Text(
+                        text = "$${"%,.2f".format(price)}",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    PriceChangeIndicator(change = stock.change)
+                } ?: Text(
+                    text = "—",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PriceChangeIndicator(
+    change: PriceChange,
+    modifier: Modifier = Modifier
+) {
+    val (text, color) = when (change) {
+        PriceChange.UP -> "↑" to Color.White
+        PriceChange.DOWN -> "↓" to Color.White
+        PriceChange.NONE -> "—" to MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    Text(
+        text = text,
+        color = color,
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.Bold,
+        modifier = modifier
+    )
+}
+
+
+@Preview
+@Composable
+fun FeedContentPreview() {
+    val sampleStocks = listOf(
+        Stock(symbol = "AAPL", price = 192.33, change = PriceChange.UP, previousPrice = 100.0),
+        Stock(symbol = "GOOG", price = 2875.48),
+        Stock(symbol = "TSLA", price = 812.75)
+    )
+    val previewUiState = FeedUiState(
+        stocks = sampleStocks
+    )
+
+    FeedContent(
+        uiState = previewUiState,
+        onStockClick = {}
+    )
 }

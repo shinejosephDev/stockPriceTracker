@@ -1,5 +1,6 @@
 package com.sj.stocktracker.ui.feed
 
+import androidx.compose.runtime.Composable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sj.stocktracker.data.repository.StockRepository
