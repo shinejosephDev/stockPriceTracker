@@ -25,7 +25,7 @@ import javax.inject.Singleton
 @Singleton
 class WebSocketManager @Inject constructor(
     @ApplicationScope private val reconnectScope: CoroutineScope
-) {
+) : IWebSocketManager{
     companion object {
         private const val TAG = "WebSocketManager"
         private const val WS_URL = "wss://ws.postman-echo.com/raw"
@@ -42,13 +42,13 @@ class WebSocketManager @Inject constructor(
     private var retryCount = 0
 
     private val _connectionStatus = MutableStateFlow(ConnectionStatus.DISCONNECTED)
-    val connectionStatus: StateFlow<ConnectionStatus> = _connectionStatus.asStateFlow()
+    override val connectionStatus: StateFlow<ConnectionStatus> = _connectionStatus.asStateFlow()
 
     private val _incomingMessages = MutableSharedFlow<String>(
         extraBufferCapacity = 64,
         onBufferOverflow = BufferOverflow.DROP_OLDEST
     )
-    val incomingMessages: SharedFlow<String> = _incomingMessages.asSharedFlow()
+    override val incomingMessages: SharedFlow<String> = _incomingMessages.asSharedFlow()
 
     private val listener = object : WebSocketListener() {
 
@@ -80,18 +80,18 @@ class WebSocketManager @Inject constructor(
         }
     }
 
-    fun connect() {
+    override fun connect() {
         if (_connectionStatus.value == ConnectionStatus.CONNECTED ||
             _connectionStatus.value == ConnectionStatus.CONNECTING
         ) return
         isUserDisconnected = false
-
         _connectionStatus.value = ConnectionStatus.CONNECTING
-        val request = Request.Builder().url(WS_URL).build()
+        val request = Request.Builder().url(WebSocketManager.Companion.WS_URL).build()
         webSocket = client.newWebSocket(request, listener)
     }
 
-    fun disconnect() {
+
+    override fun disconnect() {
         isUserDisconnected = true
 
         retryCount = 0
@@ -99,7 +99,7 @@ class WebSocketManager @Inject constructor(
         webSocket = null
     }
 
-    fun sendMessage(message: String): Boolean {
+    override fun sendMessage(message: String): Boolean {
         return webSocket?.send(message) ?: false
     }
 

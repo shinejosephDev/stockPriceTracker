@@ -39,6 +39,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -87,6 +90,7 @@ fun FeedContent(
                 actions = {
                     Button(
                         onClick = onToggle,
+                        modifier = Modifier.testTag("toggle_button"),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = if (uiState.isRunning) {
                                 MaterialTheme.colorScheme.error
@@ -108,7 +112,8 @@ fun FeedContent(
         LazyColumn(
             modifier = modifier
                 .fillMaxSize()
-                .padding(paddingValues),
+                .padding(paddingValues)
+                .testTag("stock_list"),
             verticalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(
                 horizontal = 16.dp,
@@ -156,6 +161,7 @@ fun StockRow(stock: Stock, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Card(
         modifier = modifier
             .fillMaxWidth()
+            .testTag("stock_row_${stock.symbol}")
             .clickable(onClick = onClick),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(
@@ -233,11 +239,18 @@ private fun ConnectionIndicator(
         ConnectionStatus.CONNECTING -> Color(0xFFFFC107)
         ConnectionStatus.DISCONNECTED -> Color(0xFFFF1744)
     }
+    val description = when (status) {
+        ConnectionStatus.CONNECTED -> "Connected"
+        ConnectionStatus.CONNECTING -> "Connecting"
+        ConnectionStatus.DISCONNECTED -> "Disconnected"
+    }
     Box(
         modifier = modifier
             .size(12.dp)
             .clip(CircleShape)
             .background(color)
+            .testTag("connection_indicator")
+            .semantics { contentDescription = description }
     )
 }
 

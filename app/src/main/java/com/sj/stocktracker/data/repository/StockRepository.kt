@@ -1,5 +1,7 @@
 package com.sj.stocktracker.data.repository
 
+import com.sj.stocktracker.core.di.ApplicationScope
+import com.sj.stocktracker.data.network.IWebSocketManager
 import com.sj.stocktracker.data.network.WebSocketManager
 import com.sj.stocktracker.domain.model.ConnectionStatus
 import com.sj.stocktracker.domain.model.PriceChange
@@ -23,7 +25,9 @@ import kotlin.random.Random
 
 @Singleton
 class StockRepository @Inject constructor(
-    private val webSocketManager: WebSocketManager
+    private val webSocketManager: IWebSocketManager,
+    @ApplicationScope private val scope: CoroutineScope
+
 ) {
     companion object {
         private const val SIMULATION_INTERVAL_MS = 2000L
@@ -39,7 +43,6 @@ class StockRepository @Inject constructor(
         )
     }
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     private val _stocks = MutableStateFlow<Map<String, Stock>>(
         SYMBOLS.associateWith { Stock(symbol = it) }
