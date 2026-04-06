@@ -7,6 +7,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.navigation.navDeepLink
 import com.sj.stocktracker.ui.details.DetailScreen
 import com.sj.stocktracker.ui.feed.FeedScreen
 
@@ -29,6 +30,9 @@ fun AppNavigation(navController: NavHostController = rememberNavController()) {
             arguments = listOf(
                 navArgument("symbol") { type = NavType.StringType }
             ),
+            deepLinks = listOf(
+                navDeepLink { uriPattern = "stocks://symbol/{symbol}" }
+            )
         ) {
             DetailScreen(
                 onNavigateBack = { navController.popBackStack() }
