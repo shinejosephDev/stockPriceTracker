@@ -3,10 +3,6 @@
 
 ![Demo](assets/demo.gif)
 
-## 🎥 Full Demo
-
-![App Demo](assets/demo.gif)
-
 ## ✨ Features
 
 - Real-time stock price updates via WebSocket
